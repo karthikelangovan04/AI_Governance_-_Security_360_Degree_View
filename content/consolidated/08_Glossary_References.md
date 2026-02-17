@@ -32,6 +32,9 @@
 | Gemini as Judge | ADK plugin using Gemini Flash Lite to screen inputs/outputs for appropriateness, prompt injection, jailbreak; returns predetermined response if unsafe ([12](https://raw.githubusercontent.com/google/adk-docs/main/docs/safety/index.md)). |
 | PII Redaction plugin (ADK) | Plugin that redacts PII before tool execution or sending to external services; used in Before Tool Callback ([12](https://raw.githubusercontent.com/google/adk-docs/main/docs/safety/index.md)). |
 | VPC Service Controls (VPC-SC) | GCP perimeter control; confines API calls to resources within the perimeter; reduces data exfiltration and impact radius ([12](https://raw.githubusercontent.com/google/adk-docs/main/docs/safety/index.md)). |
+| Apigee API hub | Platform for managing organization's APIs, including MCP servers and tools; Cloud API Registry imports metadata from Apigee API hub; register MCP APIs by setting API style to MCP ([14](https://docs.cloud.google.com/apigee/docs/apihub/register-mcp-apis)). |
+| Model Armor (MCP integration) | Sanitizes MCP tool calls and responses; mitigates prompt injection, malicious URIs, sensitive data disclosure; configure floor setting with GOOGLE_MCP_SERVER integration; enable MCP content security per project ([15](https://docs.cloud.google.com/model-armor/model-armor-mcp-google-cloud-integration)). |
+| MCP AI security and safety | Guidance for securing MCP server use: agent identity/permissions, protect against malicious prompts (separate data from instructions, isolate resources, sanitize with Model Armor), protect against malicious tool use (verify sources, restrict permissions, deny policies), data recovery strategy ([16](https://docs.cloud.google.com/mcp/ai-security-safety)). |
 
 ## Ingested sources (URLs) — citation required
 
@@ -50,5 +53,9 @@
 | 11 | Apigee as LLM gateway Part 1 (applies to agent API server on Cloud Run) | [Medium](https://medium.com/@apigeek/harnessing-apigee-api-management-platform-as-an-llm-gateway-part1-2-220d1f88b4b4) | `content/ingested/governance/apigee-llm-gateway-cloud-run-part1.md` |
 | 12 | Apigee as LLM gateway Part 2 — implementation | [Medium](https://medium.com/@apigeek/harnessing-apigee-api-management-platform-as-an-llm-gateway-implementation-walkthrough-part-2-2-09afb4c4b093) | Implementation walkthrough; Part 1 ingested doc references Part 2 |
 | 13 | Safety and Security for AI Agents (ADK) | [Google ADK docs](https://raw.githubusercontent.com/google/adk-docs/main/docs/safety/index.md) | `content/ingested/governance/google-adk-safety-security-ai-agents.md` |
+| 14 | Register MCP APIs (Apigee API hub) | [Google Cloud](https://docs.cloud.google.com/apigee/docs/apihub/register-mcp-apis) | `content/ingested/governance/apigee-api-hub-register-mcp-apis.md` |
+| 15 | Model Armor integration with Google Cloud MCP servers | [Google Cloud](https://docs.cloud.google.com/model-armor/model-armor-mcp-google-cloud-integration) | `content/ingested/governance/model-armor-mcp-integration.md` |
+| 16 | AI security and safety (MCP) | [Google Cloud](https://docs.cloud.google.com/mcp/ai-security-safety) | `content/ingested/governance/gcp-mcp-ai-security-safety.md` |
+| 17 | Cloud API Registry overview | [Google Cloud](https://docs.cloud.google.com/api-registry/docs/overview) | `content/ingested/governance/gcp-cloud-api-registry-overview.md` |
 
 Every article in this repo stores **citation** (URL) and **reference** (ingested file path). See [CITATION_STANDARD.md](../CITATION_STANDARD.md).

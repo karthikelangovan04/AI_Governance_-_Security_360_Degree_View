@@ -183,7 +183,139 @@ Within the Google ecosystem you can enforce **role-based access** so different a
 
 ---
 
-## 7. Best practices (Google ecosystem)
+## 7. When to use each security mechanism & service combinations
+
+This section guides **when to use** each security mechanism and how to **combine services** for defense in depth.
+
+### 7.1 Decision guidance: when to use each mechanism
+
+| Security mechanism | When to use | Use case examples |
+|-------------------|-------------|-------------------|
+| **Identity Platform** | User-facing apps; need email/password, social, OIDC/SAML, MFA | Web app with user sign-in; multi-tenant SaaS |
+| **Agent identity (Vertex AI Agent Engine)** | Production agents on Agent Engine; need per-agent IAM principal | Each agent has different permissions; audit per-agent actions |
+| **Service account (attached)** | Agent/workload on Cloud Run/GKE/Compute Engine; no per-agent identity needed | Shared service account OK; agent runs on GCP compute |
+| **Apigee (gateway)** | Need API management: auth, rate limits, quotas, tool-level access (`allowed_tools`), analytics | MCP at scale; multiple clients; need developer portal; tool-level RBAC |
+| **Cloud API Registry** | Want centralized MCP catalog; registry-first workflow; no manual MCP URLs | Agent Engine agents; want unified discovery/governance; zero-boilerplate tool consumption |
+| **Model Armor** | Need prompt injection/jailbreak protection; malicious URI filtering; content safety | Agent-only (AO) mode; user-provided prompts; MCP tool calls/responses |
+| **VPC Service Controls** | Need data exfiltration prevention; confine API calls to perimeter | High-security workloads; compliance requirements; prevent data leakage |
+| **ADK Tool Context / Before Tool Callback** | Need in-app policy enforcement; validate tool params; session/user role checks | Complement gateway/registry RBAC; enforce business rules; dynamic policy |
+| **Gemini content filters** | Using Gemini models; need built-in content safety | Using Vertex AI Gemini; want non-configurable (CSAM, PII) + configurable filters |
+| **Secret Manager** | Store API keys, OAuth secrets, credentials | Any service needs secrets; avoid hardcoding |
+| **Cloud Logging / Trace** | Need audit trail; debugging; compliance | Always use; required for production |
+
+### 7.2 Common service combinations (how services dock together)
+
+#### Combination 1: Enterprise MCP at scale (Apigee + Cloud Run + Cloud API Registry)
+
+**When:** Large organization; multiple MCP servers; need governance, tool-level RBAC, analytics.
+
+**Services dock together:**
+- **Apigee** (front door) → validates API key/OAuth, resolves API Product + `allowed_tools`, rate limits
+- **Cloud Run** (MCP server runtime) → only Apigee SA can invoke (`roles/run.invoker`)
+- **Cloud API Registry** (optional) → import MCP metadata from Apigee API hub; unified discovery
+- **Secret Manager** → MCP server reads backend credentials
+- **Cloud Logging** → audit Apigee + Cloud Run logs
+
+**Flow:** Client → Apigee (auth + `allowed_tools`) → Cloud Run (MCP server) → backend APIs. Apigee filters `tools/list` and blocks unauthorized tool calls.
+
+**Use this when:** You need tool-level access control, developer portal, quotas, analytics, and centralized MCP governance.
+
+#### Combination 2: Registry-first with Agent Engine (Cloud API Registry + Vertex AI Agent Engine + IAM)
+
+**When:** Agents on Vertex AI Agent Engine; want zero-boilerplate tool consumption; centralized governance.
+
+**Services dock together:**
+- **Cloud API Registry** → centralized MCP catalog; `gcloud beta api-registry mcp enable`
+- **Vertex AI Agent Engine** → agent identity per agent; agents use ADK `ApiRegistry.get_toolset()`
+- **IAM** → grant Agent Engine SA `cloudapiregistry.viewer`, `mcp.toolUser`, plus data roles (e.g. `bigquery.user`)
+- **ADK** → `ApiRegistry(PROJECT_ID).get_toolset(mcp_server_name)` → tools available to agent
+
+**Flow:** Admin enables MCP server in registry → Agent Engine SA has registry + data roles → Agent uses ADK ApiRegistry → gets tools without manual URLs/secrets.
+
+**Use this when:** You use Agent Engine; want unified discovery; no per-tool secret management; IAM-based access.
+
+#### Combination 3: Defense in depth (Model Armor + VPC-SC + Apigee + Agent identity)
+
+**When:** High-security workloads; Agent-Only (AO) mode; need multiple layers.
+
+**Services dock together:**
+- **Model Armor** → sanitizes MCP tool calls/responses; prompt injection/jailbreak protection
+- **VPC Service Controls** → service perimeter; confine API calls; prevent exfiltration
+- **Apigee** → gateway auth, `allowed_tools`, rate limits
+- **Vertex AI Agent Engine** (agent identity) → per-agent IAM; CAA/mTLS
+- **Cloud Logging** → audit all layers
+
+**Flow:** Agent (agent identity) → VPC-SC perimeter → Apigee (auth + `allowed_tools`) → Model Armor (sanitize) → MCP server → backend. All within VPC-SC perimeter.
+
+**Use this when:** Critical data; Agent-Only mode; compliance requirements; need multiple security layers.
+
+#### Combination 4: User-scoped access (Identity Platform + Apigee + ADK callbacks)
+
+**When:** Agent acts on behalf of users; different users have different tool access.
+
+**Services dock together:**
+- **Identity Platform** → user sign-in; custom claims (user role)
+- **Apigee** → API Products per user group; `allowed_tools` per product
+- **ADK Before Tool Callback** → enforce role from session state; validate tool/params
+- **Cloud Logging** → log user + agent identity
+
+**Flow:** User signs in (Identity Platform) → gets API key for product (Apigee) → agent uses key → Apigee filters tools → ADK callback validates role → tool executes.
+
+**Use this when:** Multi-user app; user-scoped permissions; need user attribution in logs.
+
+#### Combination 5: Simple registry + Model Armor (Cloud API Registry + Model Armor)
+
+**When:** Using Google Cloud MCP servers; want discovery + content safety; no gateway needed.
+
+**Services dock together:**
+- **Cloud API Registry** → discover/enable Google MCP servers
+- **Model Armor** → enable MCP sanitization in floor setting; scan tool calls/responses
+- **IAM** → grant registry + data roles to agent SA
+- **Cloud Logging** → Model Armor detection logs
+
+**Flow:** Enable MCP server in registry → enable Model Armor MCP protection → agent uses tools → Model Armor scans → blocks if malicious.
+
+**Use this when:** Using Google Cloud MCP servers; want content safety; no custom gateway needed.
+
+### 7.3 Decision tree: choosing your combination
+
+**Start here:** What is your primary need?
+
+1. **Need tool-level RBAC + developer portal + analytics?**
+   - → Use **Combination 1** (Apigee + Cloud Run + Cloud API Registry)
+
+2. **Agents on Vertex AI Agent Engine; want zero-boilerplate?**
+   - → Use **Combination 2** (Cloud API Registry + Agent Engine + IAM)
+
+3. **High-security; Agent-Only mode; compliance?**
+   - → Use **Combination 3** (Model Armor + VPC-SC + Apigee + Agent identity)
+
+4. **Multi-user app; user-scoped permissions?**
+   - → Use **Combination 4** (Identity Platform + Apigee + ADK callbacks)
+
+5. **Using Google Cloud MCP servers; simple setup?**
+   - → Use **Combination 5** (Cloud API Registry + Model Armor)
+
+**Then add layers as needed:**
+- **Always add:** Cloud Logging (audit)
+- **Add Model Armor if:** User-provided prompts, Agent-Only mode, or content safety required
+- **Add VPC-SC if:** Data exfiltration prevention, compliance, or high-security workloads
+- **Add Apigee if:** Need gateway features (rate limits, quotas, developer portal, tool-level RBAC)
+- **Add Cloud API Registry if:** Want centralized MCP catalog or registry-first workflow
+
+### 7.4 Google services summary by combination
+
+| Combination | Core services | Complementary services |
+|-------------|---------------|------------------------|
+| **Enterprise MCP** | Apigee, Cloud Run, Cloud API Registry | Secret Manager, Cloud Logging, Artifact Registry |
+| **Registry-first** | Cloud API Registry, Vertex AI Agent Engine, IAM | ADK (ApiRegistry), Cloud Logging |
+| **Defense in depth** | Model Armor, VPC-SC, Apigee, Agent identity | Cloud Logging, Secret Manager |
+| **User-scoped** | Identity Platform, Apigee, ADK | Cloud Logging, Secret Manager |
+| **Simple registry** | Cloud API Registry, Model Armor | IAM, Cloud Logging |
+
+---
+
+## 8. Best practices (Google ecosystem)
 
 - **Least privilege:** **IAM** roles and **OAuth** scopes minimal; **Principal Access Boundary (PAB)** for agents; **Apigee** **allowed_tools** for MCP.
 - **No secrets in code:** **Secret Manager** (Agent Engine, Cloud Run); **Apigee Key Value Map** for gateway-managed backend keys.
@@ -196,7 +328,7 @@ Within the Google ecosystem you can enforce **role-based access** so different a
 
 ---
 
-## 8. Google service summary by phase
+## 9. Google service summary by phase
 
 | Phase | Google services |
 |-------|------------------|
@@ -204,10 +336,10 @@ Within the Google ecosystem you can enforce **role-based access** so different a
 | **Workload / API auth** | ADC, IAM (service accounts), Workload Identity Federation, gcloud, Cloud Run, GKE, Compute Engine |
 | **Agent identity** | Vertex AI Agent Engine, IAM, CAA/mTLS, Secret Manager, Cloud Logging |
 | **MCP client auth** | Google Cloud MCP servers, ADC, IAM, Vertex AI Agent Engine, OAuth client ID (API Console), API keys, Secret Manager |
-| **MCP server / gateway** | Apigee, Cloud Run, Secret Manager, Artifact Registry, IAM (Cloud Run Invoker) |
-| **MCP discovery / tools** | Cloud API Registry, IAM (cloudapiregistry.viewer, mcp.toolUser), Vertex AI Agent Engine, ADK (ApiRegistry) |
+| **MCP server / gateway** | Apigee (gateway, API Products, allowed_tools), Apigee API hub (register MCP APIs), Cloud Run, Secret Manager, Artifact Registry, IAM (Cloud Run Invoker) |
+| **MCP discovery / tools** | Cloud API Registry (unified discovery, imports from Apigee API hub), Apigee API hub (register MCP APIs), IAM (cloudapiregistry.viewer, mcp.toolUser), Vertex AI Agent Engine, ADK (ApiRegistry) |
 | **Frontend→backend** | Identity Platform, Apigee, Cloud Run, Apigee Key Value Map, Model Armor, Cloud Logging, Cloud Trace |
-| **Safety & compliance** | Vertex AI (Gemini, evaluation, tracing), ADK, Model Armor, VPC-SC, Vertex Code Execution API / Code Interpreter |
+| **Safety & compliance** | Vertex AI (Gemini, evaluation, tracing), ADK, Model Armor (MCP sanitization, prompt injection/jailbreak protection), VPC-SC, Vertex Code Execution API / Code Interpreter |
 | **RBAC (agents & MCP tools)** | IAM (roles, custom roles, conditions, PAB), Vertex AI Agent Engine, Apigee (API Products, allowed_tools), Cloud API Registry, ADK (Tool Context, Before Tool Callback), Identity Platform |
 
 ---
@@ -225,3 +357,7 @@ Within the Google ecosystem you can enforce **role-based access** so different a
 | 7 | Deploy agent with Cloud API Registry on Vertex AI Agent Engine | [Google Developer forums](https://discuss.google.dev/t/where-is-the-mcp-server-deploy-your-agent-with-cloud-api-registry-on-vertex-ai-agent-engine/298130) | `content/ingested/authentication/gcp-cloud-api-registry-mcp-vertex-ai-agent-engine.md` |
 | 8 | Apigee as LLM/agent gateway (Part 1 & 2) | [Medium Part 1](https://medium.com/@apigeek/harnessing-apigee-api-management-platform-as-an-llm-gateway-part1-2-220d1f88b4b4), [Part 2](https://medium.com/@apigeek/harnessing-apigee-api-management-platform-as-an-llm-gateway-implementation-walkthrough-part-2-2-09afb4c4b093) | `content/ingested/governance/apigee-llm-gateway-cloud-run-part1.md` |
 | 9 | Safety and Security for AI Agents (ADK) | [Google ADK docs](https://raw.githubusercontent.com/google/adk-docs/main/docs/safety/index.md) | `content/ingested/governance/google-adk-safety-security-ai-agents.md` |
+| 10 | Cloud API Registry overview | [Google Cloud](https://docs.cloud.google.com/api-registry/docs/overview) | `content/ingested/governance/gcp-cloud-api-registry-overview.md` |
+| 11 | Register MCP APIs (Apigee API hub) | [Google Cloud](https://docs.cloud.google.com/apigee/docs/apihub/register-mcp-apis) | `content/ingested/governance/apigee-api-hub-register-mcp-apis.md` |
+| 12 | AI security and safety (MCP) | [Google Cloud](https://docs.cloud.google.com/mcp/ai-security-safety) | `content/ingested/governance/gcp-mcp-ai-security-safety.md` |
+| 13 | Model Armor integration with Google Cloud MCP servers | [Google Cloud](https://docs.cloud.google.com/model-armor/model-armor-mcp-google-cloud-integration) | `content/ingested/governance/model-armor-mcp-integration.md` |
