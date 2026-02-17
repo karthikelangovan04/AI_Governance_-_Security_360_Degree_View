@@ -10,6 +10,8 @@
 
 **Objective:** Comprehensive understanding to deploy **production-grade agentic AI** in general and on hyperscalers (GCP primary; AWS/Azure aligned).
 
+**Four pillars of agent governance (general):** Lifecycle Management (separation of duties), Risk Management (defense in depth), Security (least privilege), Observability (audit everything). Governance must be a first-class citizen from day one ([Tahir — Four Pillars](https://medium.com/@tahirbalarabe2/what-is-ai-agent-governance-the-four-pillars-of-ai-agent-governance-d9b045475b3e)).
+
 ## Key risks
 
 | Risk | Owner | Mitigation |
@@ -40,4 +42,5 @@ Which **cloud service** per hyperscaler applies to each governance area → see 
 
 | # | Title | URL | Ingested file / Reference |
 |---|-------|-----|---------------------------|
-|   |       |     |                           |
+| 1 | What is AI Agent Governance? The Four Pillars | [Medium](https://medium.com/@tahirbalarabe2/what-is-ai-agent-governance-the-four-pillars-of-ai-agent-governance-d9b045475b3e) | `content/ingested/governance/four-pillars-ai-agent-governance-tahir-medium.md` |
+| 2 | eCommerce Platform Serverless — flow and GCP services | [Google Cloud](https://docs.cloud.google.com/architecture/application-development/ecommerce-serverless) | `content/ingested/governance/gcp-ecommerce-platform-serverless-flow-and-services.md` |
