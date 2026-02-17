@@ -32,6 +32,8 @@
 
 Which **cloud service** per hyperscaler applies to each governance area → see [09_Hyperscaler_Cloud_Service_Mapping](09_Hyperscaler_Cloud_Service_Mapping.md).
 
+**Comprehensive security & compliance (GCP):** For a 360° view of securing agents and MCP on Google Cloud — user login, auth types, frontend→backend security, agent and MCP authentication, best practices, and **Google service per phase** — see [10_Security_Compliance_Agents_MCP_GCP](10_Security_Compliance_Agents_MCP_GCP.md). Visual map: [Security_Compliance_Agents_MCP_GCP.markmap.md](Security_Compliance_Agents_MCP_GCP.markmap.md) (open with [markmap](https://markmap.js.org/) or markmap-vscode).
+
 ## Status & next steps
 
 - Ingest general and Google Cloud URLs; consolidate with citations.

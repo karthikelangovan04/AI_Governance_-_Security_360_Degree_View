@@ -35,6 +35,7 @@ This document holds **which cloud service** (per hyperscaler) each governance ar
 | Governance area | Google Cloud | AWS | Azure |
 |-----------------|--------------|-----|--------|
 | **RBAC / policies** | IAM (roles, custom roles, org policies) | IAM (policies, roles), ABAC | Azure RBAC, Azure Policy |
+| **RBAC for agents & MCP tools** | **IAM** (per-agent principal, principal set, custom roles, PAB, conditions); **Vertex AI Agent Engine** (agent identity); **Apigee** (API Products, **allowed_tools** for MCP); **Cloud API Registry** + IAM (registry + data roles per SA/agent); **ADK** (Tool Context, Before Tool Callback); **Identity Platform** (user claims) | _To be filled_ | _To be filled_ |
 | **Resource hierarchy** | Org → Folder → Project | Organizations, OUs | Management groups, subscriptions, resource groups |
 | **Network / perimeter** | VPC Service Controls, BeyondCorp | VPC, Security groups, IAM | VNet, NSGs, Azure Policy |
 
